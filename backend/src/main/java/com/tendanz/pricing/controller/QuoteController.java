@@ -2,6 +2,8 @@ package com.tendanz.pricing.controller;
 
 import com.tendanz.pricing.dto.QuoteRequest;
 import com.tendanz.pricing.dto.QuoteResponse;
+import com.tendanz.pricing.entity.Quote;
+import com.tendanz.pricing.repository.QuoteRepository;
 import com.tendanz.pricing.service.PricingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -10,7 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * REST Controller for managing quotes.
@@ -28,6 +32,7 @@ import java.util.List;
 public class QuoteController {
 
     private final PricingService pricingService;
+    private final QuoteRepository quoteRepository;
 
     /**
      * TODO: Create a new quote.
@@ -43,8 +48,9 @@ public class QuoteController {
      */
     @PostMapping
     public ResponseEntity<QuoteResponse> createQuote(@Valid @RequestBody QuoteRequest request) {
-        // TODO: Implement this endpoint
-        throw new UnsupportedOperationException("TODO: Implement createQuote endpoint");
+        log.info("REST request to create a new quote for client: {}", request.getClientName());
+        QuoteResponse response = pricingService.calculateQuote(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     /**
@@ -85,7 +91,39 @@ public class QuoteController {
     public ResponseEntity<List<QuoteResponse>> getAllQuotes(
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) Double minPrice) {
-        // TODO: Implement filtering and retrieval logic
-        throw new UnsupportedOperationException("TODO: Implement getAllQuotes endpoint");
+        log.info("Fetching quotes with filters - ProductID: {}, MinPrice: {}", productId, minPrice);
+
+        List<Quote> quotes;
+        BigDecimal minPriceBd = (minPrice != null) ? BigDecimal.valueOf(minPrice) : null;
+
+        // 1. Filtrage via le Repository
+        if (productId != null && minPriceBd != null) {
+            quotes = quoteRepository.findByProductId(productId).stream()
+                    .filter(q -> q.getFinalPrice().compareTo(minPriceBd) >= 0)
+                    .collect(Collectors.toList());
+        } else if (productId != null) {
+            quotes = quoteRepository.findByProductId(productId);
+        } else if (minPriceBd != null) {
+            quotes = quoteRepository.findByPriceAboveThreshold(minPriceBd);
+        } else {
+            quotes = quoteRepository.findAll();
+        }
+
+        // 2. Mapping manuel (pour contourner le 'private access' du service)
+        List<QuoteResponse> responseList = quotes.stream()
+                .map(quote -> QuoteResponse.builder()
+                        .quoteId(quote.getId())
+                        .productName(quote.getProduct().getName())
+                        .zoneName(quote.getZone().getName())
+                        .clientName(quote.getClientName())
+                        .clientAge(quote.getClientAge())
+                        .basePrice(quote.getBasePrice())
+                        .finalPrice(quote.getFinalPrice())
+                        // Note: appliedRules reste vide ou null car deserializeRules est privée
+                        .createdAt(quote.getCreatedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responseList);
     }
 }
