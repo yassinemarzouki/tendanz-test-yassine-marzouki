@@ -46,8 +46,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationExceptions(
             MethodArgumentNotValidException ex) {
-        // TODO: Implement validation error handling
-        throw new UnsupportedOperationException("TODO: Implement handleValidationExceptions");
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors().forEach(error ->
+                fieldErrors.put(error.getField(), error.getDefaultMessage())
+        );
+
+        Map<String, Object> response = createErrorResponse(HttpStatus.BAD_REQUEST, "Validation failed");
+        response.put("errors", fieldErrors);
+
+        return ResponseEntity.badRequest().body(response);
     }
 
     /**
@@ -64,8 +72,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
             IllegalArgumentException ex) {
-        // TODO: Implement not-found error handling
-        throw new UnsupportedOperationException("TODO: Implement handleIllegalArgumentException");
+
+        log.warn("Business error: {}", ex.getMessage());
+
+        Map<String, Object> response = createErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
     /**
@@ -81,7 +92,19 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGeneralException(Exception ex) {
-        // TODO: Implement generic error handling
-        throw new UnsupportedOperationException("TODO: Implement handleGeneralException");
+
+        log.error("Technical error: ", ex);
+
+        Map<String, Object> response = createErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+    }
+
+    private Map<String, Object> createErrorResponse(HttpStatus status, String message) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("timestamp", LocalDateTime.now());
+        response.put("status", status.value());
+        response.put("error", status.getReasonPhrase());
+        response.put("message", message);
+        return response;
     }
 }
