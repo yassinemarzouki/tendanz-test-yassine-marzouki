@@ -91,39 +91,8 @@ public class QuoteController {
     public ResponseEntity<List<QuoteResponse>> getAllQuotes(
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) Double minPrice) {
-        log.info("Fetching quotes with filters - ProductID: {}, MinPrice: {}", productId, minPrice);
-
-        List<Quote> quotes;
-        BigDecimal minPriceBd = (minPrice != null) ? BigDecimal.valueOf(minPrice) : null;
-
-        // 1. Filtrage via le Repository
-        if (productId != null && minPriceBd != null) {
-            quotes = quoteRepository.findByProductId(productId).stream()
-                    .filter(q -> q.getFinalPrice().compareTo(minPriceBd) >= 0)
-                    .collect(Collectors.toList());
-        } else if (productId != null) {
-            quotes = quoteRepository.findByProductId(productId);
-        } else if (minPriceBd != null) {
-            quotes = quoteRepository.findByPriceAboveThreshold(minPriceBd);
-        } else {
-            quotes = quoteRepository.findAll();
-        }
-
-        // 2. Mapping manuel (pour contourner le 'private access' du service)
-        List<QuoteResponse> responseList = quotes.stream()
-                .map(quote -> QuoteResponse.builder()
-                        .quoteId(quote.getId())
-                        .productName(quote.getProduct().getName())
-                        .zoneName(quote.getZone().getName())
-                        .clientName(quote.getClientName())
-                        .clientAge(quote.getClientAge())
-                        .basePrice(quote.getBasePrice())
-                        .finalPrice(quote.getFinalPrice())
-                        // Note: appliedRules reste vide ou null car deserializeRules est privée
-                        .createdAt(quote.getCreatedAt())
-                        .build())
-                .collect(Collectors.toList());
-
-        return ResponseEntity.ok(responseList);
+        log.info("REST request to get quotes with filters - Product: {}, MinPrice: {}", productId, minPrice);
+        List<QuoteResponse> results = pricingService.getAllQuotes(productId, minPrice);
+        return ResponseEntity.ok(results);
     }
 }

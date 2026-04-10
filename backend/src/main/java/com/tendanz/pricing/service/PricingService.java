@@ -20,6 +20,8 @@ import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
@@ -59,41 +61,32 @@ public class PricingService {
     public QuoteResponse calculateQuote(QuoteRequest request) {
         log.debug("Calculating quote for client: {}, product ID: {}", request.getClientName(), request.getProductId());
 
-        // 1. Validation et chargement du Produit
         Product product = productRepository.findById(request.getProductId())
                 .orElseThrow(() -> new IllegalArgumentException("Product not found with ID: " + request.getProductId()));
 
-        // 2. Validation et chargement de la Zone par son code
         Zone zone = zoneRepository.findByCode(request.getZoneCode())
                 .orElseThrow(() -> new IllegalArgumentException("Zone not found with code: " + request.getZoneCode()));
 
-        // 3. Chargement de la PricingRule pour ce produit
         PricingRule pricingRule = pricingRuleRepository.findByProductId(product.getId())
                 .orElseThrow(() -> new IllegalArgumentException("No pricing rules found for product: " + product.getName()));
 
-        // 4. Détermination de la catégorie d'âge (18-99 ans géré par l'Enum AgeCategory)
         AgeCategory ageCategory = AgeCategory.fromAge(request.getClientAge());
 
-        // 5. Récupération des facteurs pour le calcul
         BigDecimal baseRate = pricingRule.getBaseRate();
         BigDecimal ageFactor = getAgeFactor(pricingRule, ageCategory);
         BigDecimal zoneCoefficient = zone.getRiskCoefficient();
 
-        // 6. Calcul : Prix Final = Taux de Base × Facteur Âge × Coefficient Zone
-        // On arrondit à 2 décimales avec HALF_UP (arrondi standard bancaire)
         BigDecimal finalPrice = baseRate
                 .multiply(ageFactor)
                 .multiply(zoneCoefficient)
                 .setScale(2, RoundingMode.HALF_UP);
 
-        // 7. Construction de la liste des règles appliquées (pour la transparence du calcul)
         List<String> appliedRules = new ArrayList<>();
         appliedRules.add(String.format("Base rate for %s: %s TND", product.getName(), baseRate));
         appliedRules.add(String.format("Age factor for category %s (%d years): %s", ageCategory, request.getClientAge(), ageFactor));
         appliedRules.add(String.format("Zone coefficient for %s: %s", zone.getName(), zoneCoefficient));
         appliedRules.add(String.format("Final formula: %s * %s * %s = %s TND", baseRate, ageFactor, zoneCoefficient, finalPrice));
 
-        // 8. Création et sauvegarde de l'entité Quote
         Quote quote = Quote.builder()
                 .product(product)
                 .zone(zone)
@@ -108,7 +101,6 @@ public class PricingService {
         Quote savedQuote = quoteRepository.save(quote);
         log.info("Quote successfully generated with ID: {}", savedQuote.getId());
 
-        // 9. Retour de la réponse DTO
         return mapToResponse(savedQuote, appliedRules);
     }
 
@@ -181,6 +173,14 @@ public class PricingService {
 
         List<String> appliedRules = deserializeRules(quote.getAppliedRules());
         return mapToResponse(quote, appliedRules);
+    }
+
+    public List<QuoteResponse> getAllQuotes(Long productId, Double minPrice) {
+        BigDecimal priceThreshold = (minPrice != null) ? BigDecimal.valueOf(minPrice) : null;
+
+        return quoteRepository.findByFilters(productId, priceThreshold).stream()
+                .map(quote -> mapToResponse(quote, deserializeRules(quote.getAppliedRules())))
+                .collect(Collectors.toList());
     }
 
     /**
