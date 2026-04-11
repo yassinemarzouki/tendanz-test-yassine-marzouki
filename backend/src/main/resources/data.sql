@@ -13,7 +13,8 @@ INSERT INTO zone (code, name, risk_coefficient) VALUES
 INSERT INTO product (name, description, created_at) VALUES
 ('Assurance Auto', 'Couverture automobile complète', CURRENT_TIMESTAMP),
 ('Assurance Habitation', 'Protection habitation et biens', CURRENT_TIMESTAMP),
-('Assurance Santé', 'Couverture santé et frais médicaux', CURRENT_TIMESTAMP);
+('Assurance Santé', 'Couverture santé et frais médicaux', CURRENT_TIMESTAMP),
+('Assurance Vie', 'Épargne et prévoyance familiale',CURRENT_TIMESTAMP);
 
 -- Insert Pricing Rules (product_id, base_rate, age factors, created_at)
 -- Age factors are identical for all products:
@@ -30,3 +31,7 @@ VALUES (2, 300.00, 1.30, 1.00, 1.20, 1.50, CURRENT_TIMESTAMP);
 -- Assurance Santé: base_rate = 800.00 TND
 INSERT INTO pricing_rule (product_id, base_rate, age_factor_young, age_factor_adult, age_factor_senior, age_factor_elderly, created_at)
 VALUES (3, 800.00, 1.30, 1.00, 1.20, 1.50, CURRENT_TIMESTAMP);
+
+-- Assurance Vie: base_rate = 600.00 TND
+INSERT INTO pricing_rule (product_id, base_rate, age_factor_young, age_factor_adult, age_factor_senior, age_factor_elderly, created_at)
+VALUES (4, 600.00, 1.32, 1.00, 1.21, 1.55, CURRENT_TIMESTAMP);
