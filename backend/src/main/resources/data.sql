@@ -34,4 +34,4 @@ VALUES (3, 800.00, 1.30, 1.00, 1.20, 1.50, CURRENT_TIMESTAMP);
 
 -- Assurance Vie: base_rate = 600.00 TND
 INSERT INTO pricing_rule (product_id, base_rate, age_factor_young, age_factor_adult, age_factor_senior, age_factor_elderly, created_at)
-VALUES (4, 600.00, 1.32, 1.00, 1.21, 1.55, CURRENT_TIMESTAMP);
+VALUES (4, 600.00, 1.32, 1.00, 1.20, 1.55, CURRENT_TIMESTAMP);
