@@ -36,14 +36,9 @@ export class ProductService {
    * - Handle errors with catchError
    */
   getProducts(): Observable<Product[]> {
-    // TODO: GET from ${this.apiUrl}${this.endpoint}
-    // TODO: Handle errors with catchError
-    // 1. TODO: GET from ${this.apiUrl}${this.endpoint}
     const url = `${this.apiUrl}${this.endpoint}`;
-
     return this.http.get<Product[]>(url).pipe(
-      // 2. TODO: Handle errors with catchError
-      catchError(error => this.handleError(error))
+    catchError(error => this.handleError(error))
     );
   }
 
