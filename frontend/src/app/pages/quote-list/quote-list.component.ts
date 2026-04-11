@@ -54,12 +54,25 @@ export class QuoteListComponent implements OnInit {
     private quoteService: QuoteService,
     private productService: ProductService,
     private router: Router
-  ) {}
+  ) { }
 
   ngOnInit(): void {
     // TODO: Load products for filter dropdown
     // TODO: Load quotes from QuoteService
     // TODO: Handle loading and error states
+    this.loading = true;
+    this.errorMessage = null;
+
+    this.productService.getProducts().subscribe({
+      next: (productsData) => {
+        this.products = productsData;
+      },
+      error: (err) => {
+        console.error('Failed to load products for filters', err);
+      }
+    });
+
+    this.applyFilters();
   }
 
   /**
@@ -73,8 +86,30 @@ export class QuoteListComponent implements OnInit {
    * - Handle errors
    */
   applyFilters(): void {
-    // TODO: Implement filtering logic
-    console.log('Filters applied (TODO: implement)');
+
+    this.loading = true;
+    this.errorMessage = null;
+
+    const filters = {
+      productId: this.selectedProductId || undefined,
+      minPrice: this.minPrice || undefined
+    };
+
+    this.quoteService.getQuotes(filters).subscribe({
+      next: (data: QuoteResponse[]) => {
+        this.quotes = data;
+        this.filteredQuotes = [...data];
+
+        this.sortQuotes();
+        this.loading = false;
+      },
+
+      error: (err) => {
+        this.errorMessage = err.message || 'Failed to load quotes';
+        this.loading = false;
+        console.error('Error fetching quotes:', err);
+      }
+    });
   }
 
   /**
@@ -83,7 +118,7 @@ export class QuoteListComponent implements OnInit {
   resetFilters(): void {
     this.selectedProductId = null;
     this.minPrice = null;
-    // TODO: Reload all quotes
+    this.applyFilters();
   }
 
   /**
@@ -108,7 +143,18 @@ export class QuoteListComponent implements OnInit {
    * - Apply sortDirection (asc/desc)
    */
   private sortQuotes(): void {
-    // TODO: Implement in-memory sorting of this.filteredQuotes
+    this.filteredQuotes.sort((a, b) => {
+      let comparison = 0;
+
+      if (this.sortField === 'date') {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        comparison = dateA - dateB;
+      } else if (this.sortField === 'price') {
+        comparison = a.finalPrice - b.finalPrice;
+      }
+      return this.sortDirection === 'asc' ? comparison : -comparison;
+    });
   }
 
   /**
@@ -118,6 +164,6 @@ export class QuoteListComponent implements OnInit {
    * Hint: use this.router.navigate(['/quotes', id])
    */
   viewQuote(id: number): void {
-    // TODO: Navigate to quote detail
+    this.router.navigate(['/quotes', id]);
   }
 }
