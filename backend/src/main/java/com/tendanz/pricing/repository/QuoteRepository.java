@@ -27,7 +27,9 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
 
     List<Quote> findByProductId(Long productId);
 
-    @Query("SELECT q FROM Quote q WHERE q.finalPrice >= :minPrice")
-    List<Quote> findByPriceAboveThreshold(@Param("minPrice") BigDecimal minPrice);
+    @Query("SELECT q FROM Quote q WHERE " +
+            "(:productId IS NULL OR q.product.id = :productId) AND " +
+            "(:minPrice IS NULL OR q.finalPrice >= :minPrice)")
+    List<Quote> findByFilters(@Param("productId") Long productId, @Param("minPrice") BigDecimal minPrice);
 
 }
