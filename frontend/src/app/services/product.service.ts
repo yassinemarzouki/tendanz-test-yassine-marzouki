@@ -51,22 +51,18 @@ export class ProductService {
    * TODO: Implement error handling if needed
    */
   private handleError(error: any): Observable<never> {
-    // Log pour le debug
     console.error('Product service error:', error);
     
-    // Message par défaut (fallback)
     let errorMessage = 'Failed to load products';
-
-    // 1. On cherche d'abord le message précis du backend
+    
     if (error.error && typeof error.error.message === 'string') {
       errorMessage = error.error.message;
     } 
-    // 2. On gère le cas 404 (URL introuvable ou endpoint désactivé)
+      
     else if (error.status === 404) {
       errorMessage = 'Product list not found (404).';
     }
-
-    // On retourne l'erreur avec la syntaxe exacte demandée
+    
     return throwError(() => new Error(errorMessage));
   }
 }
