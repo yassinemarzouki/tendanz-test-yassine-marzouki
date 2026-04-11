@@ -5,6 +5,7 @@ import { Router, RouterModule } from '@angular/router';
 import { QuoteService } from '../../services/quote.service';
 import { ProductService } from '../../services/product.service';
 import { Product } from '../../models/product.model';
+import { QuoteRequest } from 'src/app/models/quote.model';
 
 /**
  * Available zones with their codes (must match backend data.sql)
@@ -53,7 +54,7 @@ export class QuoteFormComponent implements OnInit {
     private router: Router
   ) {
     this.form = this.fb.group({
-      clientName: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(100)]],
+      clientName: ['', [Validators.required]],
       productId: ['', [Validators.required]],
       zoneCode: ['', [Validators.required]],
       clientAge: ['', [Validators.required, Validators.min(18), Validators.max(99)]]
@@ -64,6 +65,20 @@ export class QuoteFormComponent implements OnInit {
     // TODO: Load products from ProductService
     // TODO: Populate this.products array
     // TODO: Handle loading and error states
+    this.loading = true;
+    this.productService.getProducts().subscribe({
+      
+      next: (data) => {
+        this.products = data;
+        this.loading = false;
+      },
+      
+      error: (err) => {
+        this.errorMessage = 'Failed to load products';
+        this.loading = false;
+        console.error(err);
+      }
+    });
   }
 
   /**
@@ -80,8 +95,38 @@ export class QuoteFormComponent implements OnInit {
    */
   onSubmit(): void {
     this.submitted = true;
-    // TODO: Implement form submission
-    console.log('Form submitted (TODO: implement)');
+    this.errorMessage = null;
+    this.successMessage = null;
+
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.loading = true;
+
+    const request: QuoteRequest = {
+      productId: Number(this.form.value.productId),
+      zoneCode: this.form.value.zoneCode,
+      clientName: this.form.value.clientName,
+      clientAge: Number(this.form.value.clientAge)
+    };
+
+    this.quoteService.createQuote(request).subscribe({
+      next: (response) => {
+        this.successMessage = 'Quote created successfully!';
+        setTimeout(() => {
+          this.router.navigate(['/quotes', response.quoteId]);
+        }, 1500);
+      },
+      error: (err) => {
+        this.errorMessage = err.message || 'An error occurred';
+        this.loading = false;
+      },
+      complete: () => {
+        this.loading = false;
+      }
+    });
   }
 
   /**
