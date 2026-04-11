@@ -70,7 +70,7 @@ class PricingServiceTest {
         productRepository.save(product);
 
         zone = Zone.builder()
-                .code("TUN")
+                .code("TUT")
                 .name("Grand Tunis")
                 .riskCoefficient(BigDecimal.valueOf(1.20))
                 .build();
@@ -99,6 +99,23 @@ class PricingServiceTest {
         // Hint: Use QuoteRequest.builder() to create the request
         // Then call pricingService.calculateQuote(request)
         // Assert: finalPrice == 600.00, basePrice == 500.00, etc.
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(product.getId())
+                .zoneCode(zone.getCode())
+                .clientName("yassine")
+                .clientAge(30)
+                .build();
+
+        QuoteResponse response = pricingService.calculateQuote(request);
+
+        assertNotNull(response);
+
+        assertTrue(new BigDecimal("600.00").compareTo(response.getFinalPrice()) == 0);
+        assertTrue(new BigDecimal("500.00").compareTo(response.getBasePrice()) == 0);
+
+        assertEquals(product.getName(), response.getProductName());
+
+        assertTrue(response.getAppliedRules().stream().anyMatch(r -> r.contains("600.00 TND")));
     }
 
     /**
@@ -108,7 +125,16 @@ class PricingServiceTest {
      */
     @Test
     void testCalculateQuoteForYoungClient() {
-        // TODO: Implement this test
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(product.getId())
+                .zoneCode(zone.getCode())
+                .clientName("ahmed")
+                .clientAge(21)
+                .build();
+
+        QuoteResponse response = pricingService.calculateQuote(request);
+
+        assertTrue(new BigDecimal("780.00").compareTo(response.getFinalPrice()) == 0);
     }
 
     /**
@@ -118,7 +144,16 @@ class PricingServiceTest {
      */
     @Test
     void testCalculateQuoteForSeniorClient() {
-        // TODO: Implement this test
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(product.getId())
+                .zoneCode(zone.getCode())
+                .clientName("mohamed")
+                .clientAge(50)
+                .build();
+
+        QuoteResponse response = pricingService.calculateQuote(request);
+
+        assertTrue(new BigDecimal("720.00").compareTo(response.getFinalPrice()) == 0);
     }
 
     /**
@@ -127,8 +162,18 @@ class PricingServiceTest {
      */
     @Test
     void testCalculateQuoteWithInvalidProductId() {
-        // TODO: Implement this test
-        // Hint: Use assertThrows(IllegalArgumentException.class, () -> ...)
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(800L) // Non-existent ID
+                .zoneCode(zone.getCode())
+                .clientName("Test")
+                .clientAge(30)
+                .build();
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () ->
+                pricingService.calculateQuote(request)
+        );
+
+        assertTrue(exception.getMessage().contains("Product not found"));
     }
 
     /**
@@ -137,7 +182,18 @@ class PricingServiceTest {
      */
     @Test
     void testCalculateQuoteWithInvalidZoneCode() {
-        // TODO: Implement this test
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(product.getId())
+                .zoneCode("TUS")
+                .clientName("Test")
+                .clientAge(30)
+                .build();
+
+        Exception exception = assertThrows(IllegalArgumentException.class, () ->
+                pricingService.calculateQuote(request)
+        );
+
+        assertTrue(exception.getMessage().contains("Zone not found"));
     }
 
     /**
@@ -145,6 +201,22 @@ class PricingServiceTest {
      * Create a quote, then retrieve it with pricingService.getQuote(id).
      * Verify all fields match.
      */
+    @Test
+    void testGetQuoteById() {
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(product.getId())
+                .zoneCode(zone.getCode())
+                .clientName("ahmed")
+                .clientAge(22)
+                .build();
+        QuoteResponse created = pricingService.calculateQuote(request);
+
+        QuoteResponse retrieved = pricingService.getQuote(created.getQuoteId());
+
+        assertEquals(created.getQuoteId(), retrieved.getQuoteId());
+        assertTrue(created.getFinalPrice().compareTo(retrieved.getFinalPrice()) == 0);
+        assertEquals("ahmed", retrieved.getClientName());
+    }
 
     /**
      * TODO: (Bonus) Test edge cases: age boundaries.
@@ -152,4 +224,36 @@ class PricingServiceTest {
      * - Age 45 should be ADULT, age 46 should be SENIOR
      * - Age 65 should be SENIOR, age 66 should be ELDERLY
      */
+    @Test
+    void testAgeBoundaries() {
+        // Age 24: 500 * 1.30 (Young Factor) * 1.20 (Zone) = 780.00
+        assertBoundary(24, "780.00", "Age 24 should be categorized as YOUNG");
+        // Age 25: 500 * 1.00 (Adult Factor) * 1.20 (Zone) = 600.00
+        assertBoundary(25, "600.00", "Age 25 should transition to ADULT");
+
+        // Age 45: 500 * 1.00 (Adult Factor) * 1.20 (Zone) = 600.00
+        assertBoundary(45, "600.00", "Age 45 should still be ADULT");
+        // Age 46: 500 * 1.20 (Senior Factor) * 1.20 (Zone) = 720.00
+        assertBoundary(46, "720.00", "Age 46 should transition to SENIOR");
+
+        // Age 65: 500 * 1.20 (Senior Factor) * 1.20 (Zone) = 720.00
+        assertBoundary(65, "720.00", "Age 65 should still be SENIOR");
+        // Age 66: 500 * 1.50 (Elderly Factor) * 1.20 (Zone) = 900.00
+        assertBoundary(66, "900.00", "Age 66 should transition to ELDERLY");
+    }
+
+    /**
+     * Mthod to reduce code duplication and improve test readability.
+     */
+    private void assertBoundary(int age, String expectedPrice, String message) {
+        QuoteRequest request = QuoteRequest.builder()
+                .productId(product.getId())
+                .zoneCode(zone.getCode())
+                .clientName("sarra")
+                .clientAge(age)
+                .build();
+
+        QuoteResponse response = pricingService.calculateQuote(request);
+        assertTrue(new BigDecimal(expectedPrice).compareTo(response.getFinalPrice()) == 0, message);
+    }
 }
