@@ -27,7 +27,7 @@ export class QuoteService {
   private readonly apiUrl = environment.apiUrl;
   private readonly endpoint = '/quotes';
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) { }
 
   /**
    * Create a new quote
@@ -43,7 +43,10 @@ export class QuoteService {
     // TODO: Send request body
     // TODO: Handle errors with catchError
     // TODO: Provide error feedback to user
-    throw new Error('Method not implemented');
+    const url = `${this.apiUrl}${this.endpoint}`;
+    return this.http.post<QuoteResponse>(url, request).pipe(
+      catchError((error) => this.handleError(error))
+    );
   }
 
   /**
@@ -58,7 +61,10 @@ export class QuoteService {
   getQuote(id: number): Observable<QuoteResponse> {
     // TODO: GET from ${this.apiUrl}${this.endpoint}/${id}
     // TODO: Handle errors with catchError
-    throw new Error('Method not implemented');
+    const url= `${this.apiUrl}${this.endpoint}/${id}`
+    return this.http.get<QuoteResponse>(url).pipe(
+      catchError(error => this.handleError(error))
+    );
   }
 
   /**
@@ -77,7 +83,21 @@ export class QuoteService {
     // TODO: Build HttpParams with optional filters
     // TODO: Pass params to HTTP request
     // TODO: Handle errors with catchError
-    throw new Error('Method not implemented');
+    const url = `${this.apiUrl}${this.endpoint}`;
+    let params = new HttpParams();
+    
+    if (filters) {
+      if (filters.productId) {
+        params = params.set('productId', filters.productId.toString());
+      }
+      if (filters.minPrice) {
+        params = params.set('minPrice', filters.minPrice.toString());
+      }
+    }
+
+    return this.http.get<QuoteResponse[]>(url, { params }).pipe(
+      catchError(error => this.handleError(error))
+    );
   }
 
   /**
@@ -92,8 +112,17 @@ export class QuoteService {
    * - Return Observable error with appropriate message
    */
   private handleError(error: any): Observable<never> {
-    // TODO: Implement error handling
+    
     console.error('Quote service error:', error);
-    return throwError(() => new Error('Failed to process quote'));
+
+    let errorMessage = 'Failed to process quote';
+
+    if (error.error && typeof error.error.message === 'string') {
+      errorMessage = error.error.message;
+    } else if (error.status === 404) {
+      errorMessage = 'The requested resource was not found.';
+    }
+
+    return throwError(() => new Error(errorMessage));
   }
 }
